@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Presentation | Java & SQL</title>
+    <style>
+        /* Minimalist Base & Dynamic Animated Grid */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 60FPS Hardware Accelerated Grid Background */
+        body::before {
+            content: '';
+            position: absolute;
+            /* Oversize the background slightly to allow smooth translation without cutting off */
+            top: -30px; left: -30px; right: -30px; bottom: -30px;
+            background-image: radial-gradient(#000000 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.1;
+            z-index: -1;
+            animation: moveBg 15s linear infinite;
+            will-change: transform; /* Hint browser for GPU layer */
+        }
+
+        @keyframes moveBg {
+            0% { transform: translate3d(0px, 0px, 0); }
+            100% { transform: translate3d(30px, 30px, 0); }
+        }
+
+        /* --- Loading Screen Styles --- */
+        #loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease-out;
+            will-change: opacity;
+        }
+
+        #funny-text {
+            font-size: 1.2rem;
+            margin-bottom: 50px;
+            text-align: center;
+            min-height: 2em;
+            padding: 0 20px;
+            font-weight: bold;
+        }
+
+        .progress-wrapper {
+            width: 100%;
+            max-width: 450px;
+            padding: 0 40px;
+            box-sizing: border-box;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background-color: #e0e0e0;
+            position: relative;
+        }
+
+        #track-fill {
+            height: 100%;
+            background-color: #000000;
+            position: absolute;
+            left: 0;
+            top: 0;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+            will-change: width;
+        }
+
+        /* 2D Stickman & Box Scene */
+        #stickman-group {
+            position: absolute;
+            left: 0%;
+            bottom: 0px;
+            display: flex;
+            align-items: flex-end;
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate3d(-35px, 0, 0); /* Centers him visually on the track tip */
+            z-index: 10;
+            will-change: left, transform;
+        }
+
+        #heavy-box {
+            width: 40px; 
+            height: 40px; 
+            background: #000000; 
+            color: #ffffff;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-weight: bold; 
+            border-radius: 4px; 
+            position: relative;
+            z-index: 2;
+            margin-left: -15px; /* Makes stickman hands overlap the box */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, background-color, border-radius;
+        }
+
+        /* 2D Animation States */
+        .pushing {
+            animation: push-effort 0.5s infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        @keyframes push-effort {
+            0% { transform: rotate(0deg) translateZ(0); }
+            100% { transform: rotate(6deg) translateZ(0); }
+        }
+
+        .push-hard {
+            animation: push-hard-effort 0.2s infinite alternate !important;
+            transform-origin: bottom center;
+        }
+
+        @keyframes push-hard-effort {
+            0% { transform: rotate(4deg) translate3d(0, 0, 0); }
+            100% { transform: rotate(12deg) translate3d(4px, 0, 0); }
+        }
+
+        .sweating #sweat {
+            animation: sweat-drop 0.4s infinite;
+            transform-origin: top center;
+        }
+
+        @keyframes sweat-drop {
+            0% { transform: translate3d(0, 0, 0); opacity: 1; }
+            100% { transform: translate3d(0, 10px, 0); opacity: 0; }
+        }
+
+        .fall-back {
+            transform: translate3d(-30px, 15px, 0) rotate(-75deg) !important;
+            transform-origin: bottom left;
+            transition: transform 0.4s ease-out;
+        }
+
+        .celebrate {
+            animation: jump 0.4s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: bottom center;
+        }
+
+        @keyframes jump {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(0, -25px, 0); }
+        }
+
+        .box-error {
+            background: repeating-linear-gradient(45deg, #000, #000 5px, #fff 5px, #fff 10px) !important;
+            color: #000 !important;
+            border: 2px solid #000;
+            transform: translate3d(15px, 10px, 0) rotate(20deg) !important;
+        }
+
+        .box-success {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #000000;
+            border-radius: 50% !important;
+            transform: translate3d(0, 0, 0) rotate(-10deg) !important;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2rem;
+            background-color: #000000;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+            will-change: opacity;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* --- Main Content Styles --- */
+        #main-content {
+            opacity: 0;
+            visibility: hidden;
+            text-align: center;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            z-index: 10;
+        }
+
+        /* Dynamic Entrance Animations for Main Content */
+        .animate-entrance {
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* Static Title Styling */
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 40px;
+            letter-spacing: -2px;
+            font-weight: 900;
+            cursor: default; /* Changed back to default cursor */
+            display: inline-block;
+            user-select: none;
+            opacity: 0; /* Hidden initially for entrance animation */
+        }
+
+        .animate-entrance h1 {
+            /* Static drop in, no float */
+            animation: slideDownFade 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes slideDownFade {
+            0% { opacity: 0; transform: translate3d(0, -40px, 0) scale(0.9); }
+            100% { opacity: 1; transform: translate3d(0, 0px, 0) scale(1); }
+        }
+
+        /* Neo-brutalist Buttons */
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 380px;
+            padding: 20px 24px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            font-weight: 900;
+            text-decoration: none;
+            color: #000000;
+            background-color: #ffffff;
+            border: 3px solid #000000;
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s, box-shadow 0.15s;
+            position: relative;
+            box-shadow: 6px 6px 0px #000000;
+            transform: translate3d(-3px, -3px, 0);
+            opacity: 0; /* Hidden initially for entrance animation */
+            will-change: transform, box-shadow, opacity, background-color;
+        }
+
+        /* Staggered entrance for buttons */
+        .animate-entrance .btn:nth-child(1) {
+            animation: slideUpFade 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 0.3s;
+        }
+
+        .animate-entrance .btn:nth-child(2) {
+            animation: slideUpFade 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards 0.5s;
+        }
+
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translate3d(-3px, 37px, 0); }
+            100% { opacity: 1; transform: translate3d(-3px, -3px, 0); }
+        }
+
+        .btn:hover {
+            background-color: #ffde00; /* Bold cyber-yellow pop on hover */
+            box-shadow: 10px 10px 0px #000000;
+            transform: translate3d(-6px, -6px, 0);
+        }
+
+        .btn:active {
+            box-shadow: 0px 0px 0px #000000;
+            transform: translate3d(3px, 3px, 0);
+            background-color: #e0e0e0;
+            transition: all 0.05s;
+        }
+
+        .btn svg {
+            width: 26px;
+            height: 26px;
+            margin-right: 12px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* --- SECRET SQL MODAL (Hacker Vibe) --- */
+        #secret-modal {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 100000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity;
+        }
+
+        .modal-content {
+            background: #0a0a0a;
+            color: #00ff00; /* Matrix Green */
+            border: 1px solid #00ff00;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            will-change: transform;
+        }
+
+        #secret-modal[style*="opacity: 1"] .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            border-bottom: 1px dashed #00ff00;
+            padding-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .modal-content pre {
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px; right: 20px;
+            color: #00ff00;
+            font-size: 1.5rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: #ffffff; }
+
+        .btn-hacker {
+            background: transparent;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, background, color;
+        }
+
+        .btn-hacker:hover {
+            background: #00ff00;
+            color: #000;
+            transform: translate3d(0, -2px, 0);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loader-container">
+        <div id="funny-text">Initializing Environment<span class="cursor"></span></div>
+        
+        <div class="progress-wrapper">
+            <div class="progress-track">
+                <div id="track-fill"></div>
+                <!-- 2D SVG Character Sequence -->
+                <div id="stickman-group">
+                    <svg viewBox="0 0 100 100" width="70" height="70" id="stickman" class="pushing">
+                        <g stroke="#000000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                            <polyline points="45,45 65,50 85,45" /> <!-- Back Arm -->
+                            <polyline points="40,65 25,85 15,95" /> <!-- Back Leg -->
+                            <line x1="45" y1="35" x2="40" y2="65" /> <!-- Body -->
+                            <circle cx="50" cy="20" r="12" fill="#ffffff" /> <!-- Head -->
+                            <circle id="sweat" cx="65" cy="15" r="2" fill="#000000" stroke="none" opacity="0" /> <!-- Sweat drop -->
+                            <polyline points="40,65 55,85 45,95" /> <!-- Front Leg -->
+                            <polyline points="45,45 70,40 90,45" /> <!-- Front Arm -->
+                        </g>
+                    </svg>
+                    <div id="heavy-box">SQL</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content">
+        <!-- The trigger for the secret menu is this H1 tag -->
+        <h1 id="secret-trigger">LibraryApp.java</h1>
+
+        <div class="button-group">
+            <!-- Copy Java Code Button -->
+            <button id="copy-btn" class="btn">
+                <svg viewBox="0 0 24 24">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy Java Code</span>
+            </button>
+
+            <!-- Download JDBC Button -->
+            <a href="https://dev.mysql.com/downloads/file/?id=547777" target="_blank" class="btn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download JDBC Connector</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Hidden SQL Modal -->
+    <div id="secret-modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h2>[ SECRET SQL SCHEMA UNLOCKED ]</h2>
+            <pre id="sql-text">CREATE DATABASE IF NOT EXISTS library_db;
+USE library_db;
+
+CREATE TABLE Categories (
+    CategoryID INT AUTO_INCREMENT PRIMARY KEY,
+    CategoryName VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE Librarians (
+    LibrarianID INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL UNIQUE,
+    PasswordHash VARCHAR(255) NOT NULL 
+);
+
+CREATE TABLE Students (
+    StudentID INT AUTO_INCREMENT PRIMARY KEY,
+    FullName VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE,
+    Phone VARCHAR(15)
+);
+
+CREATE TABLE Books (
+    BookID INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(200) NOT NULL,
+    Author VARCHAR(100) NOT NULL,
+    CategoryID INT,
+    Quantity INT NOT NULL CHECK (Quantity >= 0),
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID) ON DELETE SET NULL
+);
+
+CREATE TABLE Issue_Records (
+    IssueID INT AUTO_INCREMENT PRIMARY KEY,
+    BookID INT NOT NULL,
+    StudentID INT NOT NULL,
+    IssueDate DATE NOT NULL,
+    DueDate DATE NOT NULL,
+    ReturnDate DATE NULL,
+    FOREIGN KEY (BookID) REFERENCES Books(BookID) ON DELETE CASCADE,
+    FOREIGN KEY (StudentID) REFERENCES Students(StudentID) ON DELETE CASCADE
+);</pre>
+            <button id="copy-sql-btn" class="btn-hacker">Copy SQL Schema</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Funny 2D Loading Sequence ---
+            const textElement = document.getElementById('funny-text');
+            const trackFill = document.getElementById('track-fill');
+            const stickmanGroup = document.getElementById('stickman-group');
+            const stickman = document.getElementById('stickman');
+            const heavyBox = document.getElementById('heavy-box');
+            const loaderContainer = document.getElementById('loader-container');
+            const mainContent = document.getElementById('main-content');
+            
+            // Animation Stages logic
+            const stages = [
+                { text: "Connecting to database...", progress: 5, time: 800 },
+                { text: "Writing SQL queries...", progress: 25, time: 1000 },
+                { text: "Compiling Java...", progress: 50, time: 1200, hard: true },
+                { text: "NullPointerException!", progress: 15, error: true, time: 1600 },
+                { text: "Reading StackOverflow...", progress: 45, time: 1000 },
+                { text: "Adding semicolon...", progress: 75, time: 1000 },
+                { text: "It runs!", progress: 100, success: true, time: 1400 }
+            ];
+
+            let stageIndex = 0;
+
+            function runSequence() {
+                if (stageIndex >= stages.length) {
+                    setTimeout(() => {
+                        loaderContainer.style.opacity = '0';
+                        setTimeout(() => {
+                            loaderContainer.style.display = 'none';
+                            // Trigger dynamic entrance animation for main menu
+                            mainContent.classList.add('animate-entrance');
+                        }, 800);
+                    }, 600);
+                    return;
+                }
+
+                const currentStage = stages[stageIndex];
+
+                // Update Text & Position
+                textElement.innerHTML = currentStage.text + '<span class="cursor"></span>';
+                stickmanGroup.style.left = currentStage.progress + '%';
+                trackFill.style.width = currentStage.progress + '%';
+
+                // Reset animation classes for the current frame
+                stickman.className = 'pushing';
+                heavyBox.className = '';
+                heavyBox.innerText = "SQL";
+
+                // Apply specific stage animations based on what's happening
+                if (currentStage.hard) {
+                    stickman.classList.add('push-hard', 'sweating');
+                } else if (currentStage.error) {
+                    stickman.className = 'fall-back';
+                    heavyBox.classList.add('box-error');
+                    heavyBox.innerText = "NULL";
+                } else if (currentStage.success) {
+                    stickman.className = 'celebrate';
+                    heavyBox.classList.add('box-success');
+                    heavyBox.innerText = "OK!";
+                }
+
+                stageIndex++;
+                setTimeout(runSequence, currentStage.time);
+            }
+
+            // Start loader sequence
+            setTimeout(runSequence, 300);
+
+            // --- Secret Easter Egg Logic (10 Clicks in 5 Seconds) ---
+            const secretTrigger = document.getElementById('secret-trigger');
+            const secretModal = document.getElementById('secret-modal');
+            const closeModal = document.getElementById('close-modal');
+            const copySqlBtn = document.getElementById('copy-sql-btn');
+            const sqlText = document.getElementById('sql-text').innerText;
+            
+            let clickCount = 0;
+            let clickTimer;
+
+            secretTrigger.addEventListener('click', () => {
+                clickCount++;
+                clearTimeout(clickTimer);
+                
+                // Reset click count after 5 seconds of inactivity to allow enough time for 10 clicks
+                clickTimer = setTimeout(() => { clickCount = 0; }, 5000);
+
+                if (clickCount >= 10) {
+                    clickCount = 0; // Reset
+                    secretModal.style.display = 'flex';
+                    // Small delay to allow CSS block rendering before fading in
+                    setTimeout(() => { secretModal.style.opacity = '1'; }, 10);
+                }
+            });
+
+            closeModal.addEventListener('click', () => {
+                secretModal.style.opacity = '0';
+                setTimeout(() => { secretModal.style.display = 'none'; }, 300);
+            });
+
+            // Close modal on outside click
+            window.addEventListener('click', (e) => {
+                if (e.target === secretModal) {
+                    secretModal.style.opacity = '0';
+                    setTimeout(() => { secretModal.style.display = 'none'; }, 300);
+                }
+            });
+
+            // Copy SQL logic inside the secret modal
+            copySqlBtn.addEventListener('click', () => {
+                const originalText = copySqlBtn.innerText;
+                copySqlBtn.innerText = 'Copying...';
+                
+                const textArea = document.createElement("textarea");
+                textArea.value = sqlText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                copySqlBtn.innerText = 'Copied to Clipboard!';
+                setTimeout(() => { copySqlBtn.innerText = originalText; }, 2000);
+            });
+
+
+            // --- Embedded Java Code Logic ---
+            const javaCode = `import java.awt.*;
+import java.sql.*;
+import java.time.LocalDate;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+public class LibraryApp extends JFrame {
+
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/library_db";
+    private static final String USER = "root";
+    private static final String PASS = "password";
+
+    private CardLayout cardLayout = new CardLayout();
+    private JPanel mainPanel = new JPanel(cardLayout);
+
+    private String loggedInUser = null;
+
+    private JTable booksTable, studentsTable, categoriesTable, issuesTable;
+    private DefaultTableModel booksModel, studentsModel, categoriesModel, issuesModel;
+    
+    private JComboBox<String> cbBookCategory, cbIssueBook, cbIssueStudent;
+
+    private int selectedBookId = -1;
+    private int selectedStudentId = -1;
+    private int selectedCategoryId = -1;
+    private int selectedIssueId = -1;
+
+    public LibraryApp() {
+        setTitle("Complete Library Management System");
+        setSize(1100, 650);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        mainPanel.add(createLoginPanel(), "Login");
+        mainPanel.add(createRegisterPanel(), "Register");
+        mainPanel.add(createDashboardPanel(), "Dashboard");
+
+        add(mainPanel, BorderLayout.CENTER);
+        
+        // Add low opacity credit badge at the bottom
+        JLabel lblCredit = new JLabel("Abhinav Das");
+        lblCredit.setFont(new Font("Arial", Font.BOLD | Font.ITALIC, 11));
+        // Using RGBA color (Black with 80/255 opacity) for a faded look
+        lblCredit.setForeground(new Color(0, 0, 0, 80)); 
+        lblCredit.setHorizontalAlignment(SwingConstants.RIGHT);
+        lblCredit.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 10));
+        add(lblCredit, BorderLayout.SOUTH);
+
+        cardLayout.show(mainPanel, "Login");
+    }
+
+    private JPanel createLoginPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel form = new JPanel(new GridLayout(4, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Librarian Login"));
+        
+        JTextField txtUser = new JTextField(15);
+        JPasswordField txtPass = new JPasswordField(15);
+        JButton btnLogin = new JButton("Login");
+        JButton btnGoRegister = new JButton("Create New Account");
+
+        form.add(createLabeledField("Username:", txtUser));
+        form.add(createLabeledField("Password:", txtPass));
+        form.add(btnLogin);
+        form.add(btnGoRegister);
+        panel.add(form);
+
+        btnLogin.addActionListener(e -> {
+            if(authenticate(txtUser.getText().trim(), new String(txtPass.getPassword()))) {
+                loggedInUser = txtUser.getText().trim();
+                txtUser.setText(""); txtPass.setText("");
+                refreshAllData();
+                cardLayout.show(mainPanel, "Dashboard");
+            } else {
+                JOptionPane.showMessageDialog(this, "Invalid Username or Password!", "Login Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btnGoRegister.addActionListener(e -> cardLayout.show(mainPanel, "Register"));
+        return panel;
+    }
+
+    private JPanel createRegisterPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel form = new JPanel(new GridLayout(4, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Register New Librarian"));
+        
+        JTextField txtUser = new JTextField(15);
+        JPasswordField txtPass = new JPasswordField(15);
+        JButton btnRegister = new JButton("Register Account");
+        JButton btnGoLogin = new JButton("Back to Login");
+
+        form.add(createLabeledField("New Username:", txtUser));
+        form.add(createLabeledField("New Password:", txtPass));
+        form.add(btnRegister);
+        form.add(btnGoLogin);
+        panel.add(form);
+
+        btnRegister.addActionListener(e -> {
+            if(txtUser.getText().trim().isEmpty() || new String(txtPass.getPassword()).isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Fields cannot be empty.");
+                return;
+            }
+            if(registerUser(txtUser.getText().trim(), new String(txtPass.getPassword()))) {
+                JOptionPane.showMessageDialog(this, "Registration Successful! Please login.");
+                txtUser.setText(""); txtPass.setText("");
+                cardLayout.show(mainPanel, "Login");
+            }
+        });
+
+        btnGoLogin.addActionListener(e -> cardLayout.show(mainPanel, "Login"));
+        return panel;
+    }
+
+    private JPanel createDashboardPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JLabel lblTitle = new JLabel("Library Management Dashboard", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Arial", Font.BOLD, 20));
+        JButton btnLogout = new JButton("Logout");
+        
+        btnLogout.addActionListener(e -> {
+            loggedInUser = null;
+            cardLayout.show(mainPanel, "Login");
+        });
+        
+        header.add(lblTitle, BorderLayout.CENTER);
+        header.add(btnLogout, BorderLayout.EAST);
+        panel.add(header, BorderLayout.NORTH);
+
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.addTab("Books", createBooksTab());
+        tabbedPane.addTab("Students", createStudentsTab());
+        tabbedPane.addTab("Categories", createCategoriesTab());
+        tabbedPane.addTab("Issue Records", createIssuesTab());
+        
+        panel.add(tabbedPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createBooksTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel form = new JPanel(new GridLayout(6, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Manage Books"));
+        form.setPreferredSize(new Dimension(280, 0));
+        
+        JTextField txtTitle = new JTextField();
+        JTextField txtAuthor = new JTextField();
+        cbBookCategory = new JComboBox<>();
+        JTextField txtQty = new JTextField();
+        
+        JPanel btnPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+        JButton btnAdd = new JButton("Add");
+        JButton btnUpdate = new JButton("Update");
+        JButton btnDelete = new JButton("Delete");
+        btnPanel.add(btnAdd); btnPanel.add(btnUpdate); btnPanel.add(btnDelete);
+
+        form.add(createLabeledField("Title:", txtTitle));
+        form.add(createLabeledField("Author:", txtAuthor));
+        form.add(createLabeledField("Category:", cbBookCategory));
+        form.add(createLabeledField("Quantity:", txtQty));
+        form.add(new JLabel());
+        form.add(btnPanel);
+
+        booksModel = new DefaultTableModel(new String[]{"ID", "Title", "Author", "Category", "Qty"}, 0);
+        booksTable = new JTable(booksModel);
+
+        booksTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && booksTable.getSelectedRow() != -1) {
+                int row = booksTable.getSelectedRow();
+                selectedBookId = (int) booksModel.getValueAt(row, 0);
+                txtTitle.setText(booksModel.getValueAt(row, 1).toString());
+                txtAuthor.setText(booksModel.getValueAt(row, 2).toString());
+                txtQty.setText(booksModel.getValueAt(row, 4).toString());
+                String catName = booksModel.getValueAt(row, 3).toString();
+                for (int i = 0; i < cbBookCategory.getItemCount(); i++) {
+                    if (cbBookCategory.getItemAt(i).contains(catName)) {
+                        cbBookCategory.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+        });
+
+        btnAdd.addActionListener(e -> {
+            if(cbBookCategory.getSelectedItem() == null) return;
+            int catId = Integer.parseInt(((String)cbBookCategory.getSelectedItem()).split(" - ")[0]);
+            executeQuery("INSERT INTO Books (Title, Author, CategoryID, Quantity) VALUES (?, ?, ?, ?)", 
+                txtTitle.getText(), txtAuthor.getText(), catId, Integer.parseInt(txtQty.getText()));
+            txtTitle.setText(""); txtAuthor.setText(""); txtQty.setText("");
+            refreshAllData();
+        });
+
+        btnUpdate.addActionListener(e -> {
+            if(selectedBookId == -1 || cbBookCategory.getSelectedItem() == null) return;
+            int catId = Integer.parseInt(((String)cbBookCategory.getSelectedItem()).split(" - ")[0]);
+            executeQuery("UPDATE Books SET Title=?, Author=?, CategoryID=?, Quantity=? WHERE BookID=?", 
+                txtTitle.getText(), txtAuthor.getText(), catId, Integer.parseInt(txtQty.getText()), selectedBookId);
+            selectedBookId = -1;
+            txtTitle.setText(""); txtAuthor.setText(""); txtQty.setText("");
+            refreshAllData();
+        });
+
+        btnDelete.addActionListener(e -> {
+            if(selectedBookId == -1) return;
+            executeQuery("DELETE FROM Books WHERE BookID=?", selectedBookId);
+            selectedBookId = -1;
+            txtTitle.setText(""); txtAuthor.setText(""); txtQty.setText("");
+            refreshAllData();
+        });
+        
+        panel.add(form, BorderLayout.WEST);
+        panel.add(new JScrollPane(booksTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createStudentsTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel form = new JPanel(new GridLayout(5, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Manage Students"));
+        form.setPreferredSize(new Dimension(280, 0));
+        
+        JTextField txtName = new JTextField();
+        JTextField txtEmail = new JTextField();
+        JTextField txtPhone = new JTextField();
+        
+        JPanel btnPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+        JButton btnAdd = new JButton("Add");
+        JButton btnUpdate = new JButton("Update");
+        JButton btnDelete = new JButton("Delete");
+        btnPanel.add(btnAdd); btnPanel.add(btnUpdate); btnPanel.add(btnDelete);
+
+        form.add(createLabeledField("Full Name:", txtName));
+        form.add(createLabeledField("Email:", txtEmail));
+        form.add(createLabeledField("Phone:", txtPhone));
+        form.add(new JLabel());
+        form.add(btnPanel);
+
+        studentsModel = new DefaultTableModel(new String[]{"ID", "Name", "Email", "Phone"}, 0);
+        studentsTable = new JTable(studentsModel);
+
+        studentsTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && studentsTable.getSelectedRow() != -1) {
+                int row = studentsTable.getSelectedRow();
+                selectedStudentId = (int) studentsModel.getValueAt(row, 0);
+                txtName.setText(studentsModel.getValueAt(row, 1).toString());
+                txtEmail.setText(studentsModel.getValueAt(row, 2).toString());
+                txtPhone.setText(studentsModel.getValueAt(row, 3).toString());
+            }
+        });
+
+        btnAdd.addActionListener(e -> {
+            executeQuery("INSERT INTO Students (FullName, Email, Phone) VALUES (?, ?, ?)", 
+                txtName.getText(), txtEmail.getText(), txtPhone.getText());
+            txtName.setText(""); txtEmail.setText(""); txtPhone.setText("");
+            refreshAllData();
+        });
+
+        btnUpdate.addActionListener(e -> {
+            if(selectedStudentId == -1) return;
+            executeQuery("UPDATE Students SET FullName=?, Email=?, Phone=? WHERE StudentID=?", 
+                txtName.getText(), txtEmail.getText(), txtPhone.getText(), selectedStudentId);
+            selectedStudentId = -1;
+            txtName.setText(""); txtEmail.setText(""); txtPhone.setText("");
+            refreshAllData();
+        });
+
+        btnDelete.addActionListener(e -> {
+            if(selectedStudentId == -1) return;
+            executeQuery("DELETE FROM Students WHERE StudentID=?", selectedStudentId);
+            selectedStudentId = -1;
+            txtName.setText(""); txtEmail.setText(""); txtPhone.setText("");
+            refreshAllData();
+        });
+        
+        panel.add(form, BorderLayout.WEST);
+        panel.add(new JScrollPane(studentsTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createCategoriesTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel form = new JPanel(new GridLayout(3, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Manage Categories"));
+        form.setPreferredSize(new Dimension(280, 0));
+        
+        JTextField txtName = new JTextField();
+        
+        JPanel btnPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+        JButton btnAdd = new JButton("Add");
+        JButton btnUpdate = new JButton("Update");
+        JButton btnDelete = new JButton("Delete");
+        btnPanel.add(btnAdd); btnPanel.add(btnUpdate); btnPanel.add(btnDelete);
+
+        form.add(createLabeledField("Category Name:", txtName));
+        form.add(new JLabel());
+        form.add(btnPanel);
+
+        categoriesModel = new DefaultTableModel(new String[]{"ID", "Category Name"}, 0);
+        categoriesTable = new JTable(categoriesModel);
+
+        categoriesTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && categoriesTable.getSelectedRow() != -1) {
+                int row = categoriesTable.getSelectedRow();
+                selectedCategoryId = (int) categoriesModel.getValueAt(row, 0);
+                txtName.setText(categoriesModel.getValueAt(row, 1).toString());
+            }
+        });
+
+        btnAdd.addActionListener(e -> {
+            executeQuery("INSERT INTO Categories (CategoryName) VALUES (?)", txtName.getText());
+            txtName.setText("");
+            refreshAllData();
+        });
+
+        btnUpdate.addActionListener(e -> {
+            if(selectedCategoryId == -1) return;
+            executeQuery("UPDATE Categories SET CategoryName=? WHERE CategoryID=?", txtName.getText(), selectedCategoryId);
+            selectedCategoryId = -1;
+            txtName.setText("");
+            refreshAllData();
+        });
+
+        btnDelete.addActionListener(e -> {
+            if(selectedCategoryId == -1) return;
+            executeQuery("DELETE FROM Categories WHERE CategoryID=?", selectedCategoryId);
+            selectedCategoryId = -1;
+            txtName.setText("");
+            refreshAllData();
+        });
+        
+        panel.add(form, BorderLayout.WEST);
+        panel.add(new JScrollPane(categoriesTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createIssuesTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel form = new JPanel(new GridLayout(6, 1, 5, 10));
+        form.setBorder(BorderFactory.createTitledBorder("Manage Issues"));
+        form.setPreferredSize(new Dimension(280, 0));
+        
+        cbIssueBook = new JComboBox<>();
+        cbIssueStudent = new JComboBox<>();
+        JTextField txtIssueDate = new JTextField(LocalDate.now().toString());
+        JTextField txtDueDate = new JTextField(LocalDate.now().plusDays(14).toString());
+        
+        JPanel btnPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+        JButton btnAdd = new JButton("Issue");
+        JButton btnUpdate = new JButton("Update");
+        JButton btnDelete = new JButton("Return/Del");
+        btnPanel.add(btnAdd); btnPanel.add(btnUpdate); btnPanel.add(btnDelete);
+
+        form.add(createLabeledField("Select Book:", cbIssueBook));
+        form.add(createLabeledField("Select Student:", cbIssueStudent));
+        form.add(createLabeledField("Issue Date (YYYY-MM-DD):", txtIssueDate));
+        form.add(createLabeledField("Due Date (YYYY-MM-DD):", txtDueDate));
+        form.add(new JLabel());
+        form.add(btnPanel);
+
+        issuesModel = new DefaultTableModel(new String[]{"ID", "Book", "Student", "Issue Date", "Due Date"}, 0);
+        issuesTable = new JTable(issuesModel);
+
+        issuesTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && issuesTable.getSelectedRow() != -1) {
+                int row = issuesTable.getSelectedRow();
+                selectedIssueId = (int) issuesModel.getValueAt(row, 0);
+                txtIssueDate.setText(issuesModel.getValueAt(row, 3).toString());
+                txtDueDate.setText(issuesModel.getValueAt(row, 4).toString());
+                
+                String bookName = issuesModel.getValueAt(row, 1).toString();
+                for (int i = 0; i < cbIssueBook.getItemCount(); i++) {
+                    if (cbIssueBook.getItemAt(i).contains(bookName)) {
+                        cbIssueBook.setSelectedIndex(i);
+                        break;
+                    }
+                }
+                
+                String studentName = issuesModel.getValueAt(row, 2).toString();
+                for (int i = 0; i < cbIssueStudent.getItemCount(); i++) {
+                    if (cbIssueStudent.getItemAt(i).contains(studentName)) {
+                        cbIssueStudent.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+        });
+
+        btnAdd.addActionListener(e -> {
+            if(cbIssueBook.getSelectedItem() == null || cbIssueStudent.getSelectedItem() == null) return;
+            int bookId = Integer.parseInt(((String)cbIssueBook.getSelectedItem()).split(" - ")[0]);
+            int studentId = Integer.parseInt(((String)cbIssueStudent.getSelectedItem()).split(" - ")[0]);
+            
+            executeQuery("INSERT INTO Issue_Records (BookID, StudentID, IssueDate, DueDate) VALUES (?, ?, ?, ?)", 
+                bookId, studentId, txtIssueDate.getText(), txtDueDate.getText());
+            executeQuery("UPDATE Books SET Quantity = Quantity - 1 WHERE BookID = ? AND Quantity > 0", bookId);
+            refreshAllData();
+        });
+
+        btnUpdate.addActionListener(e -> {
+            if(selectedIssueId == -1 || cbIssueBook.getSelectedItem() == null || cbIssueStudent.getSelectedItem() == null) return;
+            int bookId = Integer.parseInt(((String)cbIssueBook.getSelectedItem()).split(" - ")[0]);
+            int studentId = Integer.parseInt(((String)cbIssueStudent.getSelectedItem()).split(" - ")[0]);
+            
+            executeQuery("UPDATE Issue_Records SET BookID=?, StudentID=?, IssueDate=?, DueDate=? WHERE IssueID=?", 
+                bookId, studentId, txtIssueDate.getText(), txtDueDate.getText(), selectedIssueId);
+            selectedIssueId = -1;
+            refreshAllData();
+        });
+
+        btnDelete.addActionListener(e -> {
+            if(selectedIssueId == -1) return;
+            executeQuery("DELETE FROM Issue_Records WHERE IssueID=?", selectedIssueId);
+            selectedIssueId = -1;
+            refreshAllData();
+        });
+        
+        panel.add(form, BorderLayout.WEST);
+        panel.add(new JScrollPane(issuesTable), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private boolean authenticate(String username, String password) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM Librarians WHERE Username=? AND PasswordHash=?");
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            return stmt.executeQuery().next();
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "DB Error: " + ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean registerUser(String username, String password) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            PreparedStatement stmt = conn.prepareStatement("INSERT INTO Librarians (Username, PasswordHash) VALUES (?, ?)");
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Registration Error: Username may already exist.");
+            return false;
+        }
+    }
+
+    private void executeQuery(String sql, Object... params) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            for (int i = 0; i < params.length; i++) {
+                stmt.setObject(i + 1, params[i]);
+            }
+            stmt.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Operation Successful!");
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refreshAllData() {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            Statement stmt = conn.createStatement();
+            
+            categoriesModel.setRowCount(0);
+            cbBookCategory.removeAllItems();
+            ResultSet rsCat = stmt.executeQuery("SELECT * FROM Categories");
+            while(rsCat.next()) {
+                categoriesModel.addRow(new Object[]{rsCat.getInt("CategoryID"), rsCat.getString("CategoryName")});
+                cbBookCategory.addItem(rsCat.getInt("CategoryID") + " - " + rsCat.getString("CategoryName"));
+            }
+
+            studentsModel.setRowCount(0);
+            cbIssueStudent.removeAllItems();
+            ResultSet rsStu = stmt.executeQuery("SELECT * FROM Students");
+            while(rsStu.next()) {
+                studentsModel.addRow(new Object[]{rsStu.getInt("StudentID"), rsStu.getString("FullName"), rsStu.getString("Email"), rsStu.getString("Phone")});
+                cbIssueStudent.addItem(rsStu.getInt("StudentID") + " - " + rsStu.getString("FullName"));
+            }
+
+            booksModel.setRowCount(0);
+            cbIssueBook.removeAllItems();
+            ResultSet rsBook = stmt.executeQuery("SELECT Books.BookID, Books.Title, Books.Author, Categories.CategoryName, Books.Quantity FROM Books LEFT JOIN Categories ON Books.CategoryID = Categories.CategoryID ORDER BY Books.BookID DESC");
+            while(rsBook.next()) {
+                int qty = rsBook.getInt("Quantity");
+                booksModel.addRow(new Object[]{rsBook.getInt("BookID"), rsBook.getString("Title"), rsBook.getString("Author"), rsBook.getString("CategoryName"), qty});
+                cbIssueBook.addItem(rsBook.getInt("BookID") + " - " + rsBook.getString("Title"));
+            }
+
+            issuesModel.setRowCount(0);
+            ResultSet rsIss = stmt.executeQuery("SELECT Issue_Records.IssueID, Books.Title, Students.FullName, Issue_Records.IssueDate, Issue_Records.DueDate FROM Issue_Records JOIN Books ON Issue_Records.BookID = Books.BookID JOIN Students ON Issue_Records.StudentID = Students.StudentID");
+            while(rsIss.next()) {
+                issuesModel.addRow(new Object[]{rsIss.getInt("IssueID"), rsIss.getString("Title"), rsIss.getString("FullName"), rsIss.getDate("IssueDate"), rsIss.getDate("DueDate")});
+            }
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        }
+    }
+
+    private JPanel createLabeledField(String labelText, JComponent field) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.add(new JLabel(labelText), BorderLayout.NORTH);
+        p.add(field, BorderLayout.CENTER);
+        return p;
+    }
+
+    public static void main(String[] args) {
+        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception e) {}
+        SwingUtilities.invokeLater(() -> new LibraryApp().setVisible(true));
+    }
+}`;
+
+            const copyBtn = document.getElementById('copy-btn');
+            const btnText = copyBtn.querySelector('span');
+
+            copyBtn.addEventListener('click', () => {
+                const originalText = btnText.innerText;
+                btnText.innerText = 'Copying code...';
+
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = javaCode;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+
+                    btnText.innerText = 'Copied Successfully!';
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    btnText.innerText = 'Failed to copy.';
+                }
+
+                setTimeout(() => {
+                    btnText.innerText = originalText;
+                }, 2500);
+            });
+        });
+    </script>
+</body>
+</html>
